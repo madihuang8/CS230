@@ -1,18 +1,14 @@
-# pip install -U sentence-transformers datasets torch pandas
-
 from datasets import load_dataset
 from sentence_transformers import SentenceTransformer, InputExample, losses, evaluation, util
 from torch.utils.data import DataLoader
 import pandas as pd
 import os
 
-print(SentenceTransformer()._print_loss_steps)
-
 # 1) Load STSB (already split & score in [0,1])
 ds = load_dataset("sentence-transformers/stsb")
 train = ds["train"]; valid = ds["validation"]; test = ds["test"]
 
-# 2) Build InputExamples (NO extra normalization)
+# 2) Build InputExamples
 train_ex = [InputExample(texts=[s1, s2], label=float(lbl))
             for s1, s2, lbl in zip(train["sentence1"], train["sentence2"], train["score"])]
 valid_ex = [InputExample(texts=[s1, s2], label=float(lbl))
@@ -24,7 +20,7 @@ train_loader = DataLoader(train_ex, batch_size=32, shuffle=True)
 model = SentenceTransformer("sentence-transformers/all-mpnet-base-v2")
 loss_fn = losses.CosineSimilarityLoss(model)   # trains embeddings so cos_sim ~ gold score
 
-# 4) Validation evaluator (expects lists, not Column objects)
+# 4) Validation evaluator 
 val_eval = evaluation.EmbeddingSimilarityEvaluator(
     list(valid["sentence1"]), list(valid["sentence2"]), list(valid["score"])
 )
@@ -40,7 +36,7 @@ model.fit(
     output_path=OUT_DIR,  # SentenceTransformers saves the best checkpoint here when evaluator is set
 )
 
-# 6) Reload the fine-tuned model you just saved (not a different base model)
+# 6) Reload the fine-tuned model that was just saved (not a different base model)
 # If a 'best_model' subfolder exists, use it; otherwise use OUT_DIR.
 best_path = os.path.join(OUT_DIR, "best_model")
 reload_path = best_path if os.path.isdir(best_path) else OUT_DIR
